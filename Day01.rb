@@ -1,37 +1,39 @@
-=begin a = { "name" => "Chaitanya"}
+a = { "name" => "Chaitanya"}
 
-puts "Hello World"
-puts a.object_id
-puts "  #{a.nil?}" 
+# puts "Hello World"
+# puts a.object_id
+# puts "  #{a.nil?}" 
 
 a = {"name" => "Chaitanya" , "age" => 100}
 b = {"Address" => "Ghaziabad" , "count" => 0}
 
-puts 
-c = {"null" => nil}
+# puts 
+# c = {"null" => nil}
 
-puts c
-puts c.compact
+# puts c
+# puts c.compact
 
-puts a.keys
+# puts a.keys
 
-puts a.merge(b)
+# puts a.merge(b)
 
+
+# String
 d = "This is a String"
-puts d.reverse()
-puts d.include?("is")
-puts d.length()
-puts d.count "is"
-puts d.capitalize!
-puts d.bytesize
-puts "hi".bytesize
-puts "%".encoding
-puts "A".sum
-puts "A".eql? "A"
-puts "A".eql? "AB"
-puts "A" == "A"
-puts a.String
-=end
+# puts d.reverse()
+# puts d.include?("is")
+# puts d.length()
+# puts d.count "is"
+# puts d.capitalize!
+# puts d.bytesize
+# puts "hi".bytesize
+# puts "%".encoding
+# puts "A".sum
+# puts "A".eql? "A"
+# puts "A".eql? "AB"
+# puts "A" == "A"
+print d.split(" ")
+
 
 # ARRAY BIGINS HERE
 # An array literal:

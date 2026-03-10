@@ -83,7 +83,7 @@ def is_empty?(ems)
 end
 
 def is_equal?(ems , value1 , value2)
-  puts value1 == value2
+  puts ems[value1] == ems[value2]
 end
 
 def display_as_string(ems)
@@ -105,6 +105,11 @@ end
 
 def get_emp_hash_as_array(ems)
   print ems.to_a
+end
+
+def validate_email(ems , email)
+  regexp = Regexp.new("@gmail.com")
+  puts email.match?(regexp) ? true : false
 end
 
 
@@ -131,3 +136,4 @@ end
 # append_employee_list(hash_ems , dummy_append_data)
 # validate_empid?(hash_ems , "0")
 # get_emp_hash_as_array(hash_ems)
+validate_email(hash_ems , "@gmail.om")
