@@ -1,66 +1,81 @@
-acc = {'type' => "Loan" , 'balance' => 10000 , 'password' => "abcd"}
-user = {'name' => "Chaitanya" , 'Salary' => 10000 , "Gender" => "M" , 'age' => 18}
 users_list = {}    # format is like user id to user details
 bank_accounts = {} # format is like account id to acc details
-acc_to_user = {}
 new_acc_id = {'val' => 0}
-acc_type_list = ['Savings' , 'Loan']
+acc_type_list = ['Saving' , 'Loan']
 new_user_id = {'val' => 0}
 new_transaction_id = {'val' => 0}
 loan = {} # format is line acc no to loan amount
 transactions = {}
 EMI_RATE = 10
 
-def create_account(bank_accounts , acc_to_user , users_list , new_acc_id)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
+def create_account(bank_accounts , users_list , new_acc_id , acc_type_list)
+  user_id = check_id_availability("Enter your User Id" , users_list)
+  (puts "This account does not exists"; return) unless user_id
   puts "Enter your user password"
   user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
-    return
-  end
+  (puts "Incorrect Password" ;return) unless verify_password(users_list , user_id , user_password)
   new_acc_id['val'] += 1
-  acc_to_user[new_acc_id['val']] = user_id
-  puts "Enter your Acc Type"
-  puts "Loan or Saving"
-  type = check_type_availability(gets.chomp)
-  puts "Set your password"
-  password = gets.chomp
-  bank_accounts[new_acc_id['val']] = {'type' => type , 'password' => password , 'balance' => 0}
-  rescue => e
-    puts "Invalid Inputs try again"
+  type = check_type_availability("Enter your Acc Type \nEnter 'Loan' or 'Saving'" , acc_type_list)
+  (puts "Unknow Account Type" ; return) unless type
+  password = password_validator("Set your password")
+  bank_accounts[new_acc_id['val']] = type == 'Saving' ? {'type' => 'Saving' ,'user_id' => user_id, 'password' => password , 'balance' => 0} : {'type' => 'Loan' ,'user_id' => user_id, 'password' => password , 'loan_amt' => 0}
 end
 
-def check_type_availability(acc_type_list , acc_type)
-  type = acc_type_list.bsearch{|x| x == acc_type} 
-  if type != nil
-    return type
-  else
-    raise "Invalid Input"
-  end
+def check_id_availability(message ,list)
+  print message
+  item = gets.chomp.to_i
+  return item if list.include?(item)
+end
+
+def check_type_availability(message ,list)
+  print message
+  item = gets.chomp
+  return item if list.include?(item)
 end
 
 def register_user(new_user_id , users_list)
   new_user_id['val'] += 1
-  puts "Enter your name"
-  salary = gets.chomp
-  puts "Enter your Salary"
-  name = validate_negative(gets.chomp.to_i)
-  puts "Enter your gender"
-  gender = gets.chomp
-  puts "Enter your age"
-  age = validate_negative(gets.chomp.to_i)
-  puts "Set your password"
-  password = gets.chomp
-  users_list[new_user_id['val']] = {'name' => name , 'Salary' => salary , "gender" => gender , 'age' => age , 'password' => password}
+  name = name_validator("Enter your name")
+  password = password_validator("Set your password")
+  users_list[new_user_id['val']] = {'name' => name ,'password' => password}
   puts "Your Id is #{new_user_id['val']} very important"
-  rescue => e
-    puts "Invalid Inputs try again"
 end
 
 def verify_password(list, id, password)
   list.any? { |key, value| key == id && value['password'] == password }
+end
+
+def positive_input(message)
+  loop do
+    print message
+    begin
+      value = Float(gets.chomp)
+      return value unless value <= 0 
+      puts "Amount must be positive"
+    end
+  end
+end
+
+def name_validator(message)
+  loop do
+    print "#{message}"
+    value = gets.chomp.strip
+    return value if value.match?(/\A[a-zA-Z\s]{3,}\z/) || value == 'Om'
+    puts "Your name is not recognized as standard name Min 3 char and no number"
+  end
+end
+
+def negative_checker(value)
+  value.to_f < 0 ? value : nil
+end
+
+def password_validator(message)
+  loop do
+    print "#{message}"
+    input = gets.chomp.strip
+    return input if input.match?(/\A\d{4}\z/)
+    puts "Please Enter 4 Digit Pin"
+  end
 end
 
 def view_registered_users(users_list)
@@ -74,116 +89,61 @@ def view_loans(loan)
   puts loan
 end
 
-def deposit_money(acc_to_user ,users_list ,bank_accounts)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
-  puts "Enter user password"
-  user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
-    return
-  end
-  puts "These are your account"
-  puts acc_to_user.select{|key , value| value == user_id}
-
-
-  puts "Enter your Account No to Use"
-  acc_to_use = validate_negative(gets.chomp.to_i)
-  puts "Enter user acc password"
-  acc_password = gets.chomp
-  unless verify_password(bank_accounts , acc_to_use , acc_password)
-    puts "Incorrect Password"
-    return
-  end
-    puts "Amount to Deposit"
-    balance = validate_negative(gets.chomp.to_i)
-    bank_accounts.filter do |key , value|
-      if key==acc_to_use
-        value['balance'] += balance
-      end
+def deposit_money(users_list ,bank_accounts , transactions , new_transaction_id)
+  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts , 'Saving')
+  return puts "Account not found" unless acc_to_use
+  deposit_amt = positive_input("Amount to Deposit")
+  new_transaction_id['val'] += 1
+  transactions[new_transaction_id['val']] = {'acc_id' => user_id , 'amount' => deposit_amt , 'type' => 'deposit' , 'create_at' => Time.now}
+  bank_accounts.filter do |key , value|
+    if key == acc_to_use
+      value['balance'] += deposit_amt
+      return deposit_amt,acc_to_use
     end
+  end
 end
 
-def withdraw_money(acc_to_user ,users_list ,bank_accounts)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
-  puts "Enter user password"
-  user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
+def withdraw_money(users_list ,bank_accounts ,transactions , new_transaction_id)
+  user_id,acc_to_use = verification_user_then_account(users_list ,  bank_accounts , 'Saving')
+  return puts "Account not found" unless acc_to_use
+  withdraw_amt = positive_input("Amount to Withdraw") if withdraw_amt.to_i.zero?
+  if bank_accounts[acc_to_use]['balance'] < withdraw_amt
+    puts "Insufficient Balance"
     return
   end
-  puts "These are your account"
-  puts acc_to_user.select{|key , value| value == user_id}
-
-
-  puts "Enter your Account No to Use"
-  acc_to_use = validate_negative(gets.chomp.to_i)
-  puts "Enter user acc password"
-  acc_password = gets.chomp
-  unless verify_password(bank_accounts , acc_to_use , acc_password)
-    puts "Incorrect Password"
-    return
-  end
-    puts "Amount to Withdraw"
-    balance = validate_negative(gets.chomp.to_i)
-    bank_accounts.filter do |key , value|
-      if key==acc_to_use
-        value['balance'] -= balance
-      end
-    end
+  bank_accounts[acc_to_use]['balance'] -= transfer_amt
+  new_transaction_id['val'] += 1
+  transactions[new_transaction_id['val']] = {'acc_id' => acc_to_use ,  'amount' => withdraw_amt , 'type' => 'withdraw' , 'create_at' => Time.now} if withdraw_amt == 0
+  return withdraw_amt,acc_to_use
+    
 end
 
-def transfer_btw_accs(acc_to_user ,users_list , bank_accounts , transactions , new_transaction_id)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
-  puts "Enter user password"
-  user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
+def transfer_btw_accs( users_list, bank_accounts, transactions, new_transaction_id)
+  user_id, acc_to_use = verification_user_then_account(users_list, bank_accounts , 'Saving')
+  return unless acc_to_use
+  transfer_amt = positive_input("Amount to Transfer")
+  if bank_accounts[acc_to_use]['balance'] < transfer_amt
+    puts "Transfer Failed: Insufficient Balance"
     return
   end
-
-  puts "These are your account"
-  puts acc_to_user.select{|key , value| value == user_id}
-  puts "Enter your Account No to Use"
-  acc_to_use = validate_negative(gets.chomp.to_i)
-  puts "Enter user acc password"
-  acc_password = gets.chomp
-  unless verify_password(bank_accounts , acc_to_use , acc_password)
-    puts "Incorrect Password"
+  print "Enter the Destination Account ID: "
+  dest_acc_id = gets.chomp.to_i
+  unless bank_accounts.key?(dest_acc_id)
+    puts "Transfer Failed: Destination account does not exist"
     return
   end
+  bank_accounts[acc_to_use]['balance'] -= transfer_amt
+  bank_accounts[dest_acc_id]['balance'] += transfer_amt
+  new_transaction_id['val'] += 1
+  transactions[new_transaction_id['val']] = {'from_acc_id' => acc_to_use, 'to_acc_id'=> dest_acc_id, 'amount'=> transfer_amt, 'type'=> "transfer",'create_at'   => Time.now}
 
-    puts "Amount to Transfer"
-    transfer_amt = validate_negative(gets.chomp.to_i)
-    bank_accounts.filter do |key , value|
-      if key==acc_to_use
-        value['balance'] -= transfer_amt
-      end
-
-    end
-
-    puts "Where to transfer acc id"
-    where_to_transfer_id = validate_negative(gets.chomp.to_i)
-
-    bank_accounts.filter do |key , value|
-      if key == where_to_transfer_id
-        value['balance'] += transfer_amt
-      end
-
-    end
-
-    new_transaction_id['val'] += 1
-    transactions[new_transaction_id['val']] = {from_acc_id => acc_to_use , to_acc_id => where_to_transfer_id , amount => transfer_amt}
+  puts "Transfer Successful!"
+  puts "New Balance: #{bank_accounts[acc_to_use]['balance']}"
 end
 
 def emi_calculator(pr,emi_rate)
-  puts "Enter number of years"
-  years = validate_negative(gets.chomp.to_i)
-  
-  puts "Enter principal amount"
-  principal = gets.chomp.to_f
+  years = positive_input("Enter number of years")
+  principal = positive_input("Enter principal amount")
   puts "Your Monthly EMI is #{pr.call(emi_rate , principal , years)}"
 end
 
@@ -193,80 +153,43 @@ pr = ->( emi_rate , principal , years ) do
   emi = (principal * r * (1 + r)**n) / ((1 + r)**n - 1)
 end
 
-def validate_negative(to_validate_i)
-  if to_validate_i < 0
-    raise "Negative Input"
-  to_validate
+def get_loan(users_list ,bank_accounts ,loan)
+  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts)
+  loan_amt = positive_input("Amount of loan")
+  bank_accounts.filter do |key , value|
+    if key==acc_to_use && value['type'] == 'Loan'
+      loan[acc_to_use] = loan_amt
+    else
+      puts "this acc is not loan type"
+    end
   end
 end
 
-
-def get_loan(acc_to_user ,users_list ,bank_accounts ,loan)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
+def verification_user_then_account(users_list , bank_accounts , type)
+  user_id = check_id_availability("Enter your User Id" , users_list)
+  (puts "This account does not exists"; return) unless user_id
   puts "Enter user password"
   user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
-    return
-  end
+  (puts "Incorrect Password" ;return) unless verify_password(users_list , user_id , user_password)
   puts "These are your account"
-  puts acc_to_user.select{|key , value| value == user_id}
-
-  puts "Enter your Account No to Use"
-  acc_to_use = validate_negative(gets.chomp.to_i)
+  your_accs = bank_accounts.select{|key , value| key == user_id && value['type'] == type}
+  puts your_accs
+  acc_to_use = check_id_availability("Enter your Account No to Use" ,your_accs)
+  (puts "This account does not exists"; return) unless acc_to_use
   puts "Enter user acc password"
   acc_password = gets.chomp
-  unless verify_password(bank_accounts , acc_to_use , acc_password)
-    puts "Incorrect Password"
-    return
-  end
-
-    puts "Amount of loan"
-    loan_amt = validate_negative(gets.chomp.to_i)
-    bank_accounts.filter do |key , value|
-      if key==acc_to_use && value['type'] == 'Loan'
-        loan[acc_to_use] = loan_amt
-      else
-        puts "this acc is not loan type"
-      end
-
-    end
-
+  (puts "Incorrect Password" ;return) unless verify_password(bank_accounts , acc_to_use , acc_password)
+  return user_id,acc_to_use
 end
 
-def repay_loan(acc_to_user ,users_list ,bank_accounts ,loan)
-  puts "Enter your User Id"
-  user_id = validate_negative(gets.chomp.to_i)
-  puts "Enter user password"
-  user_password = gets.chomp
-  unless verify_password(users_list , user_id , user_password)
-    puts "Incorrect Password"
-    return
-  end
-
-  puts "These are your account"
-  puts acc_to_user.select{|key , value| value == user_id}
-
-
-  puts "Enter your Account No to Use"
-  acc_to_use = validate_negative(gets.chomp.to_i)
-  puts "Enter user acc password"
-  acc_password = gets.chomp
-  unless verify_password(bank_accounts , acc_to_use , acc_password)
-    puts "Incorrect Password"
-    return
-  end
-
-    puts "Repay Amount of loan"
-    loan_amt = validate_negative(gets.chomp.to_i)
-    bank_accounts.filter do |key , value|
-      if key==acc_to_use && value['type'] == 'Loan'
-        loan[acc_to_use] = loan[acc_to_use] - loan_amt
-      end
-
+def repay_loan(users_list ,bank_accounts ,loan)
+  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts)
+  loan_amt = positive_input("Repay Amount of loan")
+  bank_accounts.filter do |key , value|
+    if key==acc_to_use && value['type'] == 'Loan'
+      loan[acc_to_use] = loan[acc_to_use] - loan_amt
     end
-
+  end
 end
 
 while true do
@@ -288,23 +211,23 @@ while true do
   when 11
     view_registered_users(users_list)
   when 2
-    create_account(bank_accounts , acc_to_user ,users_list, new_acc_id)
+    create_account(bank_accounts , users_list , new_acc_id , acc_type_list)
   when 22
     view_accounts(bank_accounts)
   when 3
-    deposit_money(acc_to_user ,users_list , bank_accounts)
+    deposit_money(users_list , bank_accounts , transactions , new_transaction_id)
   when 4
-    withdraw_money(acc_to_user ,users_list , bank_accounts)
+    withdraw_money(users_list , bank_accounts , transactions , new_transaction_id)
   when 5
-    transfer_btw_accs(acc_to_user ,users_list , bank_accounts , transactions , new_transaction_id)
+    transfer_btw_accs(users_list , bank_accounts , transactions , new_transaction_id)
   when 6
-    get_loan(acc_to_user ,users_list , bank_accounts , loan)
+    get_loan(users_list , bank_accounts , loan)
   when 66
     view_loans(loan)  
   when 7
     emi_calculator(pr , EMI_RATE)
   when 8
-    repay_loan(acc_to_user ,users_list , bank_accounts , loan)
+    repay_loan(users_list , bank_accounts , loan)
   else puts "Something is wrong"
   end
 end
