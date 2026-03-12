@@ -154,11 +154,10 @@ end
 
 def get_loan
   user_id,acc_to_use = verification_user_then_account('Loan')
-  return puts "Account not found" unless acc_to_use
-
   loan_amt = positive_input("Amount of loan")
   $bank_accounts[acc_to_use]['loan_amt'] += loan_amt if $bank_accounts[acc_to_use]['type'] == 'Loan'
-  raise "Loan not possible in this Account" unless $bank_accounts.key?(acc_to_use) && $bank_accounts[dest_acc_id] == 'Loan'
+  $new_transaction_id['val'] += 1
+  $transactions[$new_transaction_id['val']] = {'acc_id' => user_id , 'amount' => loan_amt , 'type' => 'loan' , 'create_at' => Time.now}
 end
 
 def verification_user_then_account(type)
@@ -201,7 +200,6 @@ pr = ->( principal , years ) do
   emi = (principal.to_f * r * (1 + r)**n) / ((1 + r)**n - 1)
   emi
 end
-
 
 while true do
   begin
