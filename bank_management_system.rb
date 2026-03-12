@@ -6,7 +6,7 @@ new_user_id = {'val' => 0}
 new_transaction_id = {'val' => 0}
 loan = {} # format is line acc no to loan amount
 transactions = {}
-EMI_RATE = 10
+EMI_RATE = 10.0
 
 def create_account(bank_accounts , users_list , new_acc_id , acc_type_list)
   user_id = check_id_availability("Enter your User Id" , users_list)
@@ -78,15 +78,23 @@ def password_validator(message)
   end
 end
 
+
+def view_loans(users_list , bank_accounts)
+  user_id = check_id_availability("Enter your User Id" , users_list)
+  (puts "This account does not exists"; return) unless user_id
+  puts "Enter user password"
+  user_password = gets.chomp
+  (puts "Incorrect Password" ;return) unless verify_password(users_list , user_id , user_password)
+  puts "These are your Loan accounts"
+  your_accs = bank_accounts.select{|key , value| key == user_id && value['type'] == 'Loan'}
+  puts your_accs.except('password')
+end
+
 def view_registered_users(users_list)
   puts users_list
 end
 def view_accounts(bank_accounts)
   puts bank_accounts
-end
-
-def view_loans(loan)
-  puts loan
 end
 
 def deposit_money(users_list ,bank_accounts , transactions , new_transaction_id)
@@ -115,7 +123,6 @@ def withdraw_money(users_list ,bank_accounts ,transactions , new_transaction_id)
   new_transaction_id['val'] += 1
   transactions[new_transaction_id['val']] = {'acc_id' => acc_to_use ,  'amount' => withdraw_amt , 'type' => 'withdraw' , 'create_at' => Time.now} if withdraw_amt == 0
   return withdraw_amt,acc_to_use
-    
 end
 
 def transfer_btw_accs( users_list, bank_accounts, transactions, new_transaction_id)
@@ -128,8 +135,8 @@ def transfer_btw_accs( users_list, bank_accounts, transactions, new_transaction_
   end
   print "Enter the Destination Account ID: "
   dest_acc_id = gets.chomp.to_i
-  unless bank_accounts.key?(dest_acc_id)
-    puts "Transfer Failed: Destination account does not exist"
+  unless bank_accounts.key?(dest_acc_id) && bank_accounts[dest_acc_id] == 'Saving'
+    puts "Cannot transfer to that account"
     return
   end
   bank_accounts[acc_to_use]['balance'] -= transfer_amt
@@ -141,24 +148,13 @@ def transfer_btw_accs( users_list, bank_accounts, transactions, new_transaction_
   puts "New Balance: #{bank_accounts[acc_to_use]['balance']}"
 end
 
-def emi_calculator(pr,emi_rate)
-  years = positive_input("Enter number of years")
-  principal = positive_input("Enter principal amount")
-  puts "Your Monthly EMI is #{pr.call(emi_rate , principal , years)}"
-end
-
-pr = ->( emi_rate , principal , years ) do 
-  r = emi_rate / (12 * 100)
-  n = years * 12
-  emi = (principal * r * (1 + r)**n) / ((1 + r)**n - 1)
-end
-
-def get_loan(users_list ,bank_accounts ,loan)
-  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts)
+def get_loan(users_list ,bank_accounts)
+  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts , 'Loan')
+  return puts "Account not found" unless acc_to_use
   loan_amt = positive_input("Amount of loan")
   bank_accounts.filter do |key , value|
-    if key==acc_to_use && value['type'] == 'Loan'
-      loan[acc_to_use] = loan_amt
+    if key == acc_to_use && value['type'] == 'Loan'
+      value['loan_amt'] += loan_amt
     else
       puts "this acc is not loan type"
     end
@@ -171,9 +167,10 @@ def verification_user_then_account(users_list , bank_accounts , type)
   puts "Enter user password"
   user_password = gets.chomp
   (puts "Incorrect Password" ;return) unless verify_password(users_list , user_id , user_password)
-  puts "These are your account"
-  your_accs = bank_accounts.select{|key , value| key == user_id && value['type'] == type}
-  puts your_accs
+  puts "These are your #{type} accounts"
+  your_accs = bank_accounts.select{|key , value| key == user_id && value['type'] == type}.transform_values { |v| v.except('password')}
+  (puts "No #{type} account" ; return ) if your_accs.empty?
+  puts your_accs.except('password')
   acc_to_use = check_id_availability("Enter your Account No to Use" ,your_accs)
   (puts "This account does not exists"; return) unless acc_to_use
   puts "Enter user acc password"
@@ -182,14 +179,20 @@ def verification_user_then_account(users_list , bank_accounts , type)
   return user_id,acc_to_use
 end
 
-def repay_loan(users_list ,bank_accounts ,loan)
-  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts)
-  loan_amt = positive_input("Repay Amount of loan")
-  bank_accounts.filter do |key , value|
-    if key==acc_to_use && value['type'] == 'Loan'
-      loan[acc_to_use] = loan[acc_to_use] - loan_amt
-    end
-  end
+def repay_loan(users_list ,bank_accounts)
+  user_id,acc_to_use = verification_user_then_account(users_list , bank_accounts , 'Loan')
+  return puts "Account not found" unless acc_to_use
+  repay_amt = positive_input("Repay Amount of loan")
+  (puts "Your paying too much" ; return) if bank_accounts[acc_to_use]['loan_amt'] < repay_amt
+  bank_accounts[acc_to_use]['loan_amt'] -= repay_amt
+  puts "Loan remaining #{bank_accounts[acc_to_use]['loan_amt']}"
+end
+
+pr = ->( emi_rate , principal , years ) do 
+  r = emi_rate.to_f / (12 * 100.0)
+  n = years.to_f * 12
+  emi = (principal.to_f * r * (1 + r)**n) / ((1 + r)**n - 1)
+  emi
 end
 
 while true do
@@ -200,9 +203,10 @@ while true do
   puts "3 : Deposit money into an account"
   puts "4 : Withdraw money from an account"
   puts "5 : Transfer money between two accounts"
-  puts "6 : Loan Functionality"
+  puts "6 : Get Loan"
   puts "66 : view Loans"
   puts "7 : EMI calculator (Using Lambda)"
+  puts "8 : Repay Loan"
   puts "Enter Choice"
   x = gets.chomp.to_i
   case x
@@ -221,13 +225,16 @@ while true do
   when 5
     transfer_btw_accs(users_list , bank_accounts , transactions , new_transaction_id)
   when 6
-    get_loan(users_list , bank_accounts , loan)
+    get_loan(users_list , bank_accounts)
   when 66
-    view_loans(loan)  
+    view_loans(users_list , bank_accounts)  
   when 7
-    emi_calculator(pr , EMI_RATE)
+    years = positive_input("Enter number of years")
+    principal = positive_input("Enter principal amount")
+    emi_amt = pr.call(EMI_RATE , principal , years)
+    puts "Your Monthly EMI is #{emi_amt}"
   when 8
-    repay_loan(users_list , bank_accounts , loan)
+    repay_loan(users_list , bank_accounts)
   else puts "Something is wrong"
   end
 end
