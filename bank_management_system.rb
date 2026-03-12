@@ -7,6 +7,14 @@ $new_transaction_id = {'val' => 0}
 $transactions = {}
 $EMI_RATE = 10.0
 
+def register_user()
+  $new_user_id['val'] += 1
+  name = name_validator("Enter your name")
+  password = password_validator("Set your password")
+  $users_list[$new_user_id['val']] = {'name' => name ,'password' => password}
+  puts "Your Id is #{$new_user_id['val']} very important"
+end
+
 def create_account()
   user_id = check_id_availability("Enter your User Id" , $users_list)
   raise "This account does not exists" unless user_id
@@ -33,14 +41,6 @@ def check_type_availability(message ,list)
   print message
   item = gets.chomp
   return item if list.include?(item)
-end
-
-def register_user()
-  $new_user_id['val'] += 1
-  name = name_validator("Enter your name")
-  password = password_validator("Set your password")
-  $users_list[$new_user_id['val']] = {'name' => name ,'password' => password}
-  puts "Your Id is #{$new_user_id['val']} very important"
 end
 
 def verify_password(list, id, password)
@@ -113,13 +113,8 @@ def deposit_money
   deposit_amt = positive_input("Amount to Deposit")
   $new_transaction_id['val'] += 1
   $transactions[$new_transaction_id['val']] = {'acc_id' => user_id , 'amount' => deposit_amt , 'type' => 'deposit' , 'create_at' => Time.now}
-  $bank_accounts.filter do |key , value|
-
-    if key == acc_to_use
-      value['balance'] += deposit_amt
-      [deposit_amt,acc_to_use]
-    end
-  end
+  $bank_accounts[acc_to_use]['balance'] += deposit_amt
+  [deposit_amt,acc_to_use]
 end
 
 def withdraw_money
@@ -129,7 +124,7 @@ def withdraw_money
   withdraw_amt = positive_input("Amount to Withdraw")
   raise "Insufficient Balance" if $bank_accounts[acc_to_use]['balance'] < withdraw_amt
 
-  $bank_accounts[acc_to_use]['balance'] -= transfer_amt
+  $bank_accounts[acc_to_use]['balance'] -= withdraw_amt
   $new_transaction_id['val'] += 1
   $transactions[$new_transaction_id['val']] = {'acc_id' => acc_to_use ,  'amount' => withdraw_amt , 'type' => 'withdraw' , 'create_at' => Time.now}
   [withdraw_amt,acc_to_use]
@@ -162,13 +157,8 @@ def get_loan
   return puts "Account not found" unless acc_to_use
 
   loan_amt = positive_input("Amount of loan")
-  $bank_accounts.filter do |key , value|
-    if key == acc_to_use && value['type'] == 'Loan'
-      value['loan_amt'] += loan_amt
-    else
-      puts "this acc is not loan type"
-    end
-  end
+  $bank_accounts[acc_to_use]['loan_amt'] += loan_amt if $bank_accounts[acc_to_use]['type'] == 'Loan'
+  raise "Loan not possible in this Account" unless $bank_accounts.key?(acc_to_use) && $bank_accounts[dest_acc_id] == 'Loan'
 end
 
 def verification_user_then_account(type)
@@ -231,23 +221,23 @@ while true do
   x = gets.chomp.to_i
   case x
   when 1
-    register_user()
+    register_user
   when 11
     puts $users_list
   when 2
-    create_account()
+    create_account
   when 22
     puts $bank_accounts
   when 3
-    deposit_money()
+    deposit_money
   when 4
-    withdraw_money()
+    withdraw_money
   when 5
-    transfer_btw_accs()
+    transfer_btw_accs
   when 6
-    get_loan()
+    get_loan
   when 66
-    view_loans()  
+    view_loans
   when 7
     years = positive_input("Enter number of years")
     principal = positive_input("Enter principal amount")
