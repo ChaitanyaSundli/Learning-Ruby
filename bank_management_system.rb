@@ -168,7 +168,7 @@ def verification_user_then_account(users_list , bank_accounts , type)
   user_password = gets.chomp
   (puts "Incorrect Password" ;return) unless verify_password(users_list , user_id , user_password)
   puts "These are your #{type} accounts"
-  your_accs = bank_accounts.select{|key , value| key == user_id && value['type'] == type}.transform_values { |v| v.except('password')}
+  your_accs = bank_accounts.select{|key , value| value['user_id'] == user_id && value['type'] == type}.transform_values { |v| v.except('password')}
   (puts "No #{type} account" ; return ) if your_accs.empty?
   puts your_accs.except('password')
   acc_to_use = check_id_availability("Enter your Account No to Use" ,your_accs)
@@ -195,6 +195,10 @@ pr = ->( emi_rate , principal , years ) do
   emi
 end
 
+def view_transactions(users_list , bank_accounts , transactions)
+  puts transactions
+end
+
 while true do
   puts "1 : Register User"
   puts "11: View Registered Users"
@@ -207,6 +211,7 @@ while true do
   puts "66 : view Loans"
   puts "7 : EMI calculator (Using Lambda)"
   puts "8 : Repay Loan"
+  puts "9 : View Transactions"
   puts "Enter Choice"
   x = gets.chomp.to_i
   case x
@@ -235,6 +240,8 @@ while true do
     puts "Your Monthly EMI is #{emi_amt}"
   when 8
     repay_loan(users_list , bank_accounts)
+  when 9
+    view_transactions(users_list , bank_accounts , transactions)
   else puts "Something is wrong"
   end
 end
