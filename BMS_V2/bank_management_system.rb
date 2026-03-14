@@ -45,9 +45,13 @@ class BankManagementSystem
 
   def create_account
 
-    require_customer
+  require_bank_management
 
-    customer = @session.current_user
+  print "Customer ID: "
+  cid = gets.to_i
+  customer = @list_of_customer.find { |c| c.id == cid }
+
+  raise "Customer not found" unless customer
 
     puts "\nAvailable Banks"
 
@@ -87,17 +91,38 @@ class BankManagementSystem
     @list_of_customer << user
     puts "\nUser created successfully"
     puts "Your Customer ID is: #{user.id}"
-  end
+  end  
 
   def view_bank_accounts
-    require_admin
-    bank = @session.current_user
-    rows = bank.list_of_account.map do |acc|
-      balance = acc.respond_to?(:balance) ? acc.balance : acc.total_amt_to_pay
-      [bank.name, acc.id, acc.customer.name, acc.class.name, balance]
+
+    if @session.role == :admin
+      bank = @session.current_user
+      accounts = bank.list_of_account
+    elsif @session.role == :bank_management
+      accounts = @accounts_by_id.values
+    else
+      raise "Permission denied"
     end
-    table = TTY::Table.new(["Bank","AccountID","Customer","Type","Balance/Loan"], rows)
+
+    rows = accounts.map do |acc|
+      balance = acc.respond_to?(:balance) ? acc.balance : acc.total_amt_to_pay
+
+      [
+        acc.bank.name,
+        acc.id,
+        acc.customer.name,
+        acc.class.name,
+        balance
+      ]
+    end
+
+    table = TTY::Table.new(
+      ["Bank","AccountID","Customer","Type","Balance/Loan"],
+      rows
+    )
+
     puts table.render(:unicode)
+
   end
 
   def view_my_accounts
@@ -210,7 +235,10 @@ class BankManagementSystem
     puts "\nLogin as:"
     puts "1 Customer"
     puts "2 Bank Admin"
+    puts "3 Bank Management"
+
     type = gets.to_i
+
     case type
 
     when 1
@@ -224,31 +252,38 @@ class BankManagementSystem
 
       @session.current_user = user
       @session.role = :customer
-      puts "Welcome #{user.name}"
 
     when 2
       puts "\nAvailable Banks"
-
-      @list_of_bank.each do |b|
-        puts "#{b.id}. #{b.name}"
-      end
+      @list_of_bank.each { |b| puts "#{b.id}. #{b.name}" }
 
       print "Select Bank ID: "
       id = gets.to_i
+
       bank = @list_of_bank.find { |b| b.id == id }
       raise "Invalid bank" unless bank
 
       print "Admin PIN: "
       pass = gets.chomp
+
       raise "Invalid admin PIN" unless pass == bank.instance_variable_get(:@password).to_s
 
       @session.current_user = bank
       @session.role = :admin
-      puts "Admin login successful for #{bank.name}"
+
+    when 3
+      print "Management PIN: "
+      pass = gets.chomp
+
+      raise "Invalid management PIN" unless pass == "9999"
+
+      @session.current_user = "BANK_MANAGEMENT"
+      @session.role = :bank_management
 
     else
       raise "Invalid option"
     end
+
   end
 
   def logout
@@ -263,6 +298,57 @@ class BankManagementSystem
   def require_admin
     raise "Admin login required" unless @session.role == :admin
   end
+
+  def select_bank_admin
+
+    puts "\nAvailable Banks"
+
+    @list_of_bank.each { |b| puts "#{b.id}. #{b.name}" }
+
+    print "Select Bank ID: "
+    id = gets.to_i
+
+    bank = @list_of_bank.find { |b| b.id == id }
+
+    raise "Invalid bank" unless bank
+
+    print "Admin PIN: "
+    pass = gets.chomp
+
+    raise "Invalid admin PIN" unless pass == bank.instance_variable_get(:@password).to_s
+
+    @session.current_user = bank
+    @session.role = :admin
+
+  end
+
+  def select_bank_management
+
+    puts "\nAvailable Banks"
+
+    @list_of_bank.each { |b| puts "#{b.id}. #{b.name}" }
+
+    print "Select Bank ID: "
+    id = gets.to_i
+
+    bank = @list_of_bank.find { |b| b.id == id }
+
+    raise "Invalid bank" unless bank
+
+    print "Management PIN: "
+    pass = gets.chomp
+
+    raise "Invalid PIN" unless pass == bank.instance_variable_get(:@password).to_s
+
+    @session.current_user = bank
+    @session.role = :bank_management
+
+  end
+
+  def require_bank_management
+    raise "Bank management login required" unless @session.role == :bank_management
+  end
+
 
   def choose_account(accounts)
 
@@ -316,13 +402,23 @@ class BankManagementSystem
   end
 
   def view_admin_transactions
-    bank = @session.current_user
-    account_ids = bank.list_of_account.map(&:id)
-    txns = @list_of_transaction.select do |t|
-      account_ids.include?(t.from) || account_ids.include?(t.to)
+
+    if @session.role == :admin
+      bank = @session.current_user
+      account_ids = bank.list_of_account.map(&:id)
+
+      txns = @list_of_transaction.select do |t|
+        account_ids.include?(t.from) || account_ids.include?(t.to)
+      end
+
+    elsif @session.role == :bank_management
+      txns = @list_of_transaction
+    else
+      raise "Permission denied"
     end
 
     show_transaction_table(txns)
+
   end
 
   def show_transaction_table(transactions)
