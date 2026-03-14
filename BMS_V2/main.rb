@@ -1,85 +1,96 @@
 require_relative 'bank_management_system'
-require 'pry'
+require "./modules/emi_engine"
+require "./modules/interest_engine"
+
 bms = BankManagementSystem.new
 bms.seed_dummy_data
-while true do
+
+while true
   begin
-    puts "\n================================"
-    puts "         BANK SYSTEM"
-    puts "================================"
-    puts "\nUSER"
-    puts "1   Register User"
-    puts "2   View Users"
-    puts "\nACCOUNTS"
-    puts "3   Create Account"
-    puts "4   View All Accounts"
-    puts "5   View My Accounts"
-    puts "\nTRANSACTIONS"
-    puts "6   Deposit"
-    puts "7   Withdraw"
-    puts "8   Transfer"
-    puts "\nLOANS"
-    puts "9   Repay Loan"
-    puts "10  Close Loan (Soft Delete)"
-    puts "11  View Loan Accounts"
-    puts "\nUTILITIES"
-    puts "12  EMI Calculator"
-    puts "13  View Transactions"
-    puts "14  Customers who repaid loan partially or fully"
-    puts "15  Customers who repaid more than half loan"
-    puts "16  Create Bank"
-    puts "\n0 Exit"
-    print "\nEnter Choice: "
-    input = gets.chomp
-    raise "Invalid menu input" unless input.match?(/\A\d+\z/)
+  puts "\n========= BANK SYSTEM ========="
+  puts "1 Login"
+  puts "2 Logout"
+  puts "3 Register User"
 
-    x = input.to_i
-    case x
-    when 1
-      bms.register_user
-    when 2
-      puts bms.list_of_customer
-    when 3
-      bms.create_account
-    when 4
-      bms.view_bank_accounts
-    when 5
-      bms.view_my_accounts
-    when 6
-      bms.deposit_money
-    when 7
-      bms.withdraw_money
-    when 8
-      bms.transfer_btw_accs
-    when 9
-      bms.repay_loan
-    when 10
-      bms.close_loan_account
-    when 11
-      bms.view_loans
-    when 12
-      years = positive_input("Years: ")
-      principal = positive_input("Principal: ")
-      puts "Monthly EMI = #{pr.call(principal,years)}"
-    when 13
-      puts $transactions
-    when 14
-      bms.view_repaid_loan
-    when 15
-      bms.view_repaid_loan_more_than_half
-    when 16
-      bms.create_bank
-    when 0
-      puts "\nThank you for using the Bank System"
-      break
+  if bms.session.role == :customer
 
-    else
-      puts "Invalid choice. Please select from menu."
-    end
-  rescue StandardError => e
-    puts "\nERROR: #{e.message}"
-  ensure
-    puts "\nPress ENTER to continue..."
-    gets
+    puts "\nCustomer Actions"
+    puts "4 View My Accounts"
+    puts "5 Create Account"
+    puts "6 Deposit"
+    puts "7 Withdraw"
+    puts "8 Transfer"
+    puts "9 Repay Loan"
+    puts "12 View Transactions"
+
+  elsif bms.session.role == :admin
+
+    puts "\nAdmin Actions"
+    puts "10 Create Bank"
+    puts "11 View Bank Accounts"
+    puts "12 View Transactions"
+    puts"13 Risky Loans"
+    puts"14 Risky Customers"
+    puts"15 Loan Tenure Reduction"
+    puts "16 Bank Profit"
+  end
+
+  x = gets.chomp.to_i
+  raise "Invalid Input" unless x
+  case x
+  when 1
+    bms.login
+
+  when 2
+    bms.logout
+
+  when 3
+    bms.register_user
+
+  when 4
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.view_my_accounts
+
+  when 5
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.create_account
+
+  when 6
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.deposit_money
+
+  when 7
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.withdraw_money
+
+  when 8
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.transfer_btw_accs
+
+  when 9
+    raise "Customer login required" unless bms.session.role == :customer
+    bms.repay_loan
+
+  when 10
+    raise "Admin login required" unless bms.session.role == :admin
+    bms.create_bank
+
+  when 11
+    raise "Admin login required" unless bms.session.role == :admin
+    bms.view_bank_accounts
+
+  when 12
+    bms.view_transactions
+
+  when 13 then bms.risky_loans
+  when 14 then bms.risky_customers
+  when 15 then bms.loan_tenure_reduction
+  when 16 then bms.bank_profit
+  else
+    puts "Invalid option. Please try again."
+  end
+  InterestEngine.apply_interest(bms.list_of_bank, bms.list_of_transaction)
+  rescue => e
+    puts "ERROR: #{e.message}"
   end
 end
